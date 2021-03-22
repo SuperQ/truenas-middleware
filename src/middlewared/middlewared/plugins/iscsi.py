@@ -1104,15 +1104,12 @@ class iSCSITargetService(CRUDService):
         datastore = 'services.iscsitarget'
         datastore_prefix = 'iscsi_target_'
         datastore_extend = 'iscsi.target.extend'
+        datastore_extend_context = 'iscsi.target.extend_context'
 
     @private
-    async def extend(self, data):
+    async def extend(self, data, context):
         data['mode'] = data['mode'].upper()
-        data['groups'] = await self.middleware.call(
-            'datastore.query',
-            'services.iscsitargetgroups',
-            [('iscsi_target', '=', data['id'])],
-        )
+        data['groups'] = [group.copy() for group in context['groups'] if group['iscsi_target']['id'] == data['id']]
         for group in data['groups']:
             group.pop('id')
             group.pop('iscsi_target')
@@ -1127,6 +1124,15 @@ class iSCSITargetService(CRUDService):
                 group.pop('iscsi_target_authtype')
             )
         return data
+
+    @private
+    async def extend_context(self, extra):
+        return {
+            'groups': await self.middleware.call(
+                'datastore.query',
+                'services.iscsitargetgroups',
+            )
+        }
 
     @accepts(Dict(
         'iscsi_target_create',
